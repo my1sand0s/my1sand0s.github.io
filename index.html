@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>This is me | Teja</title>
+  <style>
+    html, body {
+      height: 100%; margin: 0; padding: 0; background: #010101; color: #00ff88;
+      font-family: 'Fira Mono', 'Consolas', monospace;
+      overflow: hidden;
+    }
+    #matrix {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0;
+      pointer-events: none;
+    }
+    #terminal {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      background: rgba(0,0,0,0.9); padding: 2em; border-radius: 16px;
+      box-shadow: 0 0 40px #00ff88a0; min-width: 400px; z-index: 10;
+    }
+    #output { min-height: 160px; }
+    .blinker { animation: blink 1s steps(2, start) infinite; }
+    @keyframes blink { to { visibility: hidden; } }
+    .command { color: #00ffaa; }
+    a { color: #00ffaa; text-decoration: underline; }
+    @media (max-width: 600px) {
+      #terminal {
+        min-width: unset;
+        width: 95vw;
+        padding: 1em;
+        font-size: 0.95em;
+      }
+      pre, #output { font-size: 0.9em; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="matrix"></canvas>
+  <div id="terminal">
+    <div id="contact-modal" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,16,0,0.98);z-index:20;justify-content:center;align-items:center;flex-direction:column;">
+      <div style="background:#011;border:2px solid #0f0;border-radius:16px;padding:2em;min-width:220px;max-width:90vw;color:#0f0;text-align:center;">
+        <h2 style="margin:0;font-size:1.3em;">Contact</h2>
+        <p style="margin:1em 0 0 0;">Email: <a href="mailto:teja@nudgos.com" style="color:#00ffaa;">teja@nudgos.com</a></p>
+        <p style="margin:0.3em 0;">LinkedIn: <a href="https://www.linkedin.com/in/divyatejakondeti" target="_blank" style="color:#00ffaa;">/in/divyatejakondeti</a></p>
+        <p style="font-size:0.9em;opacity:0.7;">Tap/click anywhere to close</p>
+      </div>
+    </div>
+    <div id="output"></div>
+    <div id="statusbar" style="position:absolute;top:10px;right:28px;color:#00ffaa;font-size:0.97em;font-family:inherit;z-index:30;letter-spacing:0.04em;text-shadow:0 0 6px #020;">--:--:--</div>
+  </div>
+  <script>
+    // Boot sequence: line by line
+    const bootLines = [
+      '> Initializing...',
+      '> Cognitive Layer: <span style="color:#0ff">ONLINE</span>',
+      '',
+      "Type <span class='command'>'help'</span> for available commands."
+    ];
+    const output = document.getElementById('output');
+    function removeAllPrompts() {
+      let prompts = output.querySelectorAll('#prompt');
+      prompts.forEach(p => p.remove());
+    }
+    let buffer = '';
+    let bootIndex = 0;
+
+    const ownerSecret = 'teja2025'; // change if needed
+    const avatar = `
+<pre style="color:#0f0;line-height:120%">
+   _   _      _ _        __        __         _     _ 
+  | | | | ___| | | ___   \\ \\      / /__  _ __| | __| |
+  | |_| |/ _ \\ | |/ _ \\   \\ \\ /\\ / / _ \\| '__| |/ _\` |
+  |  _  |  __/ | | (_) |   \\ V  V / (_) | |  | | (_| |
+  |_| |_|\\___|_|_|\\___/     \\_/\\_/ \\___/|_|  |_|\\__,_|
+
+     Hello! Welcome to Teja's 1s & 0s a Matrix for the Mad, the Makers, and the Maybe-Legendary.
+</pre>
+`;
+
+    output.innerHTML = '';
+    output.innerHTML = avatar;
+
+    function showPromptForAccess() {
+      let blinkers = output.querySelectorAll('.blinker');
+      blinkers.forEach(b => b.remove());
+      removeAllPrompts();
+      output.innerHTML += `<span id="accessQ">&gt; Who are you? (visitor/friend/investor/...)</span><br>
+  <span id="prompt">&gt; <span id="input"></span><span class="blinker">_</span></span>`;
+      accessPrompted = true;
+      let promptInput = document.getElementById('input');
+      promptInput && promptInput.focus();
+    }
+
+    function showBootLines() {
+      if (bootIndex < bootLines.length) {
+        output.innerHTML += bootLines[bootIndex] + '<br>';
+        bootIndex++;
+        setTimeout(showBootLines, 500);
+      } else {
+        let accessLevel = sessionStorage.getItem('accessLevel') || null;
+        if (!accessLevel) {
+          showPromptForAccess();
+        } else {
+          let blinkers = output.querySelectorAll('.blinker');
+          blinkers.forEach(b => b.remove());
+          removeAllPrompts();
+          output.innerHTML += '<span id="prompt">&gt; <span id="input"></span><span class="blinker">_</span></span>';
+          let promptInput = document.getElementById('input');
+          promptInput && promptInput.focus();
+        }
+      }
+    }
+    showBootLines();
+
+    let accessLevel = sessionStorage.getItem('accessLevel') || null;
+    let accessPrompted = false;
+
+    // Matrix rain effect
+    const c = document.getElementById('matrix');
+    const ctx = c.getContext('2d');
+    c.height = window.innerHeight;
+    c.width = window.innerWidth;
+    let chars = '10';
+    chars = chars.split('');
+    let font_size = 18;
+    let columns = c.width / font_size;
+    let drops = [];
+    for(let x = 0; x < columns; x++) drops[x] = 1;
+
+    // Floating particles config
+    const particleCount = 45;
+    const particles = [];
+    for(let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * c.width,
+        y: Math.random() * c.height,
+        r: Math.random() * 2 + 1,
+        dx: (Math.random() - 0.5) * 0.4, // gentle horizontal drift
+        dy: (Math.random() - 0.5) * 0.4  // gentle vertical drift
+      });
+    }
+
+    // Draw floating particles
+    function drawParticles() {
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      for(let p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f0';
+        ctx.shadowColor = '#00ff88';
+        ctx.shadowBlur = 7;
+        ctx.fill();
+        ctx.closePath();
+
+        // Animate
+        p.x += p.dx;
+        p.y += p.dy;
+        // Wrap around edges for infinite float
+        if (p.x < 0) p.x = c.width; else if (p.x > c.width) p.x = 0;
+        if (p.y < 0) p.y = c.height; else if (p.y > c.height) p.y = 0;
+      }
+      ctx.restore();
+    }
+
+    function drawMatrix() {
+      ctx.fillStyle = 'rgba(0,0,0,0.07)';
+      ctx.fillRect(0,0,c.width,c.height);
+      drawParticles();
+      ctx.fillStyle = '#0F0';
+      ctx.font = font_size + "px monospace";
+      for(let i = 0; i < drops.length; i++) {
+        let text = chars[Math.floor(Math.random()*chars.length)];
+        ctx.fillText(text, i*font_size, drops[i]*font_size);
+        if(drops[i]*font_size > c.height && Math.random() > 0.975) drops[i]=0;
+        drops[i]++;
+      }
+    }
+    let drawMatrixInterval = setInterval(drawMatrix, 45);
+    // Terminal logic
+    const commands = {
+      'help': `bio         – Show operator profile<br>
+projects    – Current missions & builds<br>
+press       – Public signals & media<br>
+contact     – Secure channel info<br>
+clear       – Wipe terminal<br>
+matrix      – <span style="color:#0ff;">RAIN INTENSIFIES... [system matrix level +10]</span><br>`,
+      'bio': `Divyateja Kondeti. Founder, builder, cognition hacker.<br>
+Architecting NudgOS – the cognitive AI layer for 1B homes.<br>
+Ex: Rusé, Mystifly (Security).<br>
+Mission: Make AI feel like magic. Never “just a smart home.”<br>`,
+      'projects': `[NudgOS]  – AI OS for real-world cognition <a href="https://nudgos.com" target="_blank">[demo]</a><br>
+[Rusé]    – India's first AI home platform <a href="#" target="_blank">[archive]</a><br>
+[Mystifly]– Security & infra, airline tech<br>
+Photography – <a href="#" target="_blank">[gallery]</a><br>`,
+      'press': `TechCrunch: "Making homes think for themselves"<br>
+YourStory: "Pioneering India's AI-powered living"<br>
+ET: "Reimagining smart home automation with AI"<br>
+<a href="#">[Read more]</a><br>`,
+      'contact': '',
+      'clear': ''
+    };
+    document.addEventListener('keydown', function(e){
+      let promptInput = document.getElementById('input');
+      // During access prompt
+      if (accessPrompted) {
+        if (e.key.length === 1) {
+          buffer += e.key;
+          if (promptInput) promptInput.textContent = buffer;
+        }
+        if (e.key === 'Backspace') {
+          buffer = buffer.slice(0, -1);
+          if (promptInput) promptInput.textContent = buffer;
+        }
+        if (e.key === 'Enter') {
+          let userInput = buffer.trim().toLowerCase();
+          output.innerHTML += `> ${userInput}<br>`;
+          buffer = '';
+          let granted = false;
+          if (userInput === ownerSecret) {
+            accessLevel = 'owner';
+            sessionStorage.setItem('accessLevel', 'owner');
+            granted = true;
+          } else if (['visitor','friend','investor'].includes(userInput)) {
+            accessLevel = userInput;
+            sessionStorage.setItem('accessLevel', userInput);
+            granted = true;
+          } else {
+            output.innerHTML += `> Invalid access. Try: visitor / friend / investor / (or your code)<br>`;
+          }
+          // Remove blinkers and prompt
+          let blinkers = output.querySelectorAll('.blinker');
+          blinkers.forEach(b => b.remove());
+          document.getElementById('accessQ')?.remove();
+          if (granted) {
+            accessPrompted = false;
+            // Remove any previous blinkers (to avoid multiple cursors)
+            let blinkers = output.querySelectorAll('.blinker');
+            blinkers.forEach(b => b.remove());
+            removeAllPrompts();
+            output.innerHTML += '<span id="prompt">&gt; <span id="input"></span><span class="blinker">_</span></span>';
+            promptInput = document.getElementById('input');
+            promptInput && promptInput.focus();
+            window.scrollTo(0,document.body.scrollHeight);
+          } else {
+            let blinkers = output.querySelectorAll('.blinker');
+            blinkers.forEach(b => b.remove());
+            removeAllPrompts();
+            output.innerHTML += '<span id="prompt">&gt; <span id="input"></span><span class="blinker">_</span></span>';
+            promptInput = document.getElementById('input');
+            promptInput && promptInput.focus();
+          }
+        }
+        return;
+      }
+      // Normal terminal logic below...
+      if (e.key.length === 1) {
+        buffer += e.key;
+        if (promptInput) promptInput.textContent = buffer;
+      }
+      if (e.key === 'Backspace') {
+        buffer = buffer.slice(0, -1);
+        if (promptInput) promptInput.textContent = buffer;
+      }
+      if (e.key === 'Enter') {
+        let cmd = buffer.trim().toLowerCase();
+
+        if (cmd === 'contact') {
+          document.getElementById('contact-modal').style.display = 'flex';
+          buffer = '';
+          let blinkers = output.querySelectorAll('.blinker');
+          blinkers.forEach(b => b.remove());
+          removeAllPrompts();
+          output.innerHTML += '<span id="prompt">&gt; <span id="input"></span><span class="blinker">_</span></span>';
+          promptInput = document.getElementById('input');
+          promptInput && promptInput.focus();
+          window.scrollTo(0,document.body.scrollHeight);
+          return;
+        }
+
+        if (cmd === 'neo' || cmd === 'trinity') {
+          c.classList.add('glitch');
+          let oldInterval = drawMatrixInterval;
+          clearInterval(drawMatrixInterval);
+          drawMatrixInterval = setInterval(drawMatrix, 10); // Rain goes wild
+          document.body.style.background = '#050';
+          setTimeout(()=>{
+            c.classList.remove('glitch');
+            clearInterval(drawMatrixInterval);
+            drawMatrixInterval = setInterval(drawMatrix, 45);
+            document.body.style.background = '#010101';
+          }, 2000);
+          output.innerHTML += '<span style="color:#0ff;">[MATRIX GLITCH! Welcome, '+cmd.toUpperCase()+']</span><br>';
+          buffer = '';
+          let blinkers = output.querySelectorAll('.blinker');
+          blinkers.forEach(b => b.remove());
+          removeAllPrompts();
+          output.innerHTML += '<span id="prompt">&gt; <span id="input"></span><span class="blinker">_</span></span>';
+          promptInput = document.getElementById('input');
+          promptInput && promptInput.focus();
+          window.scrollTo(0,document.body.scrollHeight);
+          return;
+        }
+
+        output.innerHTML += `> ${cmd}<br>`;
+        if (cmd === 'clear') {
+          output.innerHTML = avatar;
+          removeAllPrompts();
+          output.innerHTML += '<span id="prompt">&gt; <span id="input"></span><span class="blinker">_</span></span>';
+        } else if (commands[cmd]) {
+          output.innerHTML += commands[cmd];
+          removeAllPrompts();
+          output.innerHTML += '<span id="prompt">&gt; <span id="input"></span><span class="blinker">_</span></span>';
+        } else {
+          output.innerHTML += `> ERROR: Command not recognized. Type 'help'.<br>`;
+          removeAllPrompts();
+          output.innerHTML += '<span id="prompt">&gt; <span id="input"></span><span class="blinker">_</span></span>';
+        }
+        buffer = '';
+
+        // Remove any previous blinkers (to avoid multiple cursors)
+        let blinkers = output.querySelectorAll('.blinker');
+        blinkers.forEach(b => b.remove());
+
+        promptInput = document.getElementById('input');
+        promptInput && promptInput.focus();
+        window.scrollTo(0,document.body.scrollHeight);
+      }
+    });
+
+    // Contact modal: close on click/tap
+    document.getElementById('contact-modal').addEventListener('click', function(){ this.style.display='none'; });
+
+    // Digital clock
+    function updateClock() {
+      const sb = document.getElementById('statusbar');
+      const d = new Date();
+      sb.textContent = d.toLocaleTimeString('en-GB', { hour12: false });
+    }
+    setInterval(updateClock, 1000); updateClock();
+  </script>
+</body>
+</html>
