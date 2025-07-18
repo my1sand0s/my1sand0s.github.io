@@ -80,6 +80,97 @@
     output.innerHTML = '';
     output.innerHTML = avatar;
 
+    // Snake game for the terminal
+    let snakeMode = false;
+    function startSnakeGame() {
+      snakeMode = true;
+      let gridSize = 20, cell = 14;
+      let w = gridSize, h = gridSize;
+      let snake = [{x:10, y:10}], dir = {x:1, y:0}, food = {x:5, y:5}, score=0, alive=true;
+      let gameDiv = document.createElement('div');
+      gameDiv.style.fontFamily = "'Fira Mono', 'Consolas', monospace";
+      gameDiv.style.lineHeight = "1.1";
+      gameDiv.style.fontSize = cell + "px";
+      let board = [];
+      let interval;
+      let started = false;
+
+      function draw() {
+        let s = "";
+        for (let y=0; y<h; y++) {
+          for (let x=0; x<w; x++) {
+            let isSnake = snake.some(p => p.x===x && p.y===y);
+            let isFood = (food.x===x && food.y===y);
+            if (isSnake && isFood) s += "1";
+            else if (snake.length && snake[0].x === x && snake[0].y === y) s += "1"; // head
+            else if (isSnake) s += "1"; // body
+            else if (isFood) s += "0";
+            else s += ".";
+          }
+          s += "<br>";
+        }
+        s += `<span style="color:#0f0">Score: ${score} &nbsp; [arrow keys to play, esc to quit]</span>`;
+        gameDiv.innerHTML = s;
+      }
+
+      function randomFood() {
+        let x, y, bad;
+        do {
+          x = Math.floor(Math.random()*w);
+          y = Math.floor(Math.random()*h);
+          bad = snake.some(p=>p.x===x&&p.y===y);
+        } while(bad);
+        food = {x, y};
+      }
+
+      function step() {
+        if (!alive) return;
+        let newHead = {x:snake[0].x+dir.x, y:snake[0].y+dir.y};
+        if (
+          newHead.x<0 || newHead.x>=w ||
+          newHead.y<0 || newHead.y>=h ||
+          snake.some(p => p.x===newHead.x && p.y===newHead.y)
+        ) {
+          alive = false;
+          gameDiv.innerHTML += "<br><span style='color:red;'>Game Over!</span> Press Esc to quit.";
+          return;
+        }
+        snake.unshift(newHead);
+        if (newHead.x===food.x && newHead.y===food.y) {
+          score++;
+          randomFood();
+        } else {
+          snake.pop();
+        }
+        draw();
+      }
+
+      function onKey(e) {
+        if (!snakeMode) return;
+        if (!started && ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
+          interval = setInterval(step, 120); started = true;
+        }
+        if (e.key==="ArrowUp" && dir.y===0) dir={x:0,y:-1};
+        else if (e.key==="ArrowDown" && dir.y===0) dir={x:0,y:1};
+        else if (e.key==="ArrowLeft" && dir.x===0) dir={x:-1,y:0};
+        else if (e.key==="ArrowRight" && dir.x===0) dir={x:1,y:0};
+        else if (e.key==="Escape") endSnakeGame();
+      }
+      function endSnakeGame() {
+        clearInterval(interval);
+        document.removeEventListener('keydown', onKey, true);
+        snakeMode = false;
+        output.innerHTML = avatar;
+        showBootLines();
+      }
+
+      output.innerHTML = '';
+      output.appendChild(gameDiv);
+      draw();
+      // interval = setInterval(step, 120); // Removed: now set on first arrow key
+      document.addEventListener('keydown', onKey, true);
+    }
+
     function showPromptForAccess() {
       let blinkers = output.querySelectorAll('.blinker');
       blinkers.forEach(b => b.remove());
@@ -181,25 +272,60 @@
     const commands = {
       'help': `bio         – Show operator profile<br>
 projects    – Current missions & builds<br>
-press       – Public signals & media<br>
+press       – News, interviews & media<br>
 contact     – Secure channel info<br>
 clear       – Wipe terminal<br>
-matrix      – <span style="color:#0ff;">RAIN INTENSIFIES... [system matrix level +10]</span><br>`,
-      'bio': `Divyateja Kondeti. Founder, builder, cognition hacker.<br>
-Architecting NudgOS – the cognitive AI layer for 1B homes.<br>
-Ex: Rusé, Mystifly (Security).<br>
-Mission: Make AI feel like magic. Never “just a smart home.”<br>`,
+matrix      – <span style="color:#0ff;">RAIN INTENSIFIES... [system matrix level +10]</span><br>
+snake       – Launch the snake game<br>
+gitrepo     – See this site's source code<br>`,
+      'bio': `<b>Divyateja Kondeti</b> is an engineer, relentless builder, and the mind behind NudgOS—an AI that quietly thinks for your home, so you don’t have to.<br><br>
+By day, he’s creating cognition for real-world environments; by night, he’s driving, capturing stories through the lens, and chasing inspiration wherever it strikes.<br><br>
+Steeped in the philosophy of Steve Jobs (“Stay hungry. Stay foolish.”), Teja believes great products aren’t built for the masses—they’re built for the mad, the curious, and the misunderstood.<br><br>
+Previously: Rusé (India’s first real smart home OS), Mystifly (aviation + security). Now building so that the future feels like magic.<br>`,
       'projects': `[NudgOS]  – AI OS for real-world cognition <a href="https://nudgos.com" target="_blank">[demo]</a><br>
 [Rusé]    – India's first AI home platform <a href="#" target="_blank">[archive]</a><br>
 [Mystifly]– Security & infra, airline tech<br>
 Photography – <a href="#" target="_blank">[gallery]</a><br>`,
-      'press': `TechCrunch: "Making homes think for themselves"<br>
-YourStory: "Pioneering India's AI-powered living"<br>
-ET: "Reimagining smart home automation with AI"<br>
-<a href="#">[Read more]</a><br>`,
+      'press': `SiliconIndia: <a href="https://startup.siliconindia.com/vendor/smartden-a-name-of-significance-in-the-smart-home-industry-cid-15015.html" target="_blank">Smartden: A Name of Significance in the Smart Home Industry</a><br>
+TimesNow (Video): <a href="https://www.timesnownews.com/videos/et-now/shows/smart-homes-the-money-show/83855" target="_blank">Smart Homes - The Money Show (Interview)</a><br>
+Financial Express: <a href="https://www.financialexpress.com/money/how-smart-construction-could-transform-home-building-post-the-pandemic-2088161/" target="_blank">How smart construction could transform home building post-pandemic</a><br>`,
       'contact': '',
-      'clear': ''
+      'clear': '',
+      'snake': '<span style="color:#0ff;">Launching SNAKE... Press arrow keys to move. Esc to exit.</span><br>',
+      'gitrepo': `Want to build your own version? <a href="https://github.com/my1sand0s/my1sand0s.github.io" target="_blank">Clone this repo</a><br>`,
     };
+    // Smart Replies Mapping
+    const smartReplies = [
+      {
+        triggers: ['hello', 'hi'],
+        reply: "Hello!! How are you? want to know more? just type 'who are you?' or fancy a lil snake? 'type snake'"
+      },
+      {
+        triggers: ['who are you', 'your name', 'about you', 'what are you'],
+        reply: "I'm Teja's Matrix-inspired digital OS. This site is a bio and playground, built by Divyateja Kondeti – founder of NudgOS and restless creator. just ask 'what do you build' or 'help' for more."
+      },
+      {
+        triggers: ['contact', 'how do i reach', 'email', 'linkedin'],
+        reply: "You can email me at <a href='mailto:teja@nudgos.com'>teja@nudgos.com</a> or connect on <a href='https://www.linkedin.com/in/divyatejakondeti' target='_blank'>LinkedIn</a>. Or just type 'contact'."
+      },
+      {
+        triggers: ['projects', 'what are you building', 'what do you build', 'show projects', 'show me your projects'],
+        reply: "Projects: NudgOS (AI OS for real-world cognition), Rusé (India’s first AI home platform), Mystifly (aviation/security), Photography. Type 'projects' for full list!"
+      },
+      {
+        triggers: ['snake', 'play a game', 'game'],
+        reply: "Type <span class='command'>'snake'</span> to play a secret game."
+      },
+      {
+        triggers: ['press', 'news', 'media', 'interview'],
+        reply: "Check out my press and interviews – just type <span class='command'>'press'</span>."
+      },
+      {
+        triggers: ['how do i clone', 'github', 'source code'],
+        reply: "Want to clone this site? Type <span class='command'>'gitrepo'</span> for the repo."
+      }
+    ];
+
     document.addEventListener('keydown', function(e){
       let promptInput = document.getElementById('input');
       // During access prompt
@@ -234,6 +360,8 @@ ET: "Reimagining smart home automation with AI"<br>
           document.getElementById('accessQ')?.remove();
           if (granted) {
             accessPrompted = false;
+            let displayName = userInput === ownerSecret ? "Owner" : userInput.charAt(0).toUpperCase() + userInput.slice(1);
+            output.innerHTML += `> Hi ${displayName}!<br>`;
             // Remove any previous blinkers (to avoid multiple cursors)
             let blinkers = output.querySelectorAll('.blinker');
             blinkers.forEach(b => b.remove());
@@ -302,6 +430,12 @@ ET: "Reimagining smart home automation with AI"<br>
           return;
         }
 
+        if (cmd === 'snake') {
+          startSnakeGame();
+          buffer = '';
+          return;
+        }
+
         output.innerHTML += `> ${cmd}<br>`;
         if (cmd === 'clear') {
           output.innerHTML = avatar;
@@ -312,7 +446,14 @@ ET: "Reimagining smart home automation with AI"<br>
           removeAllPrompts();
           output.innerHTML += '<span id="prompt">&gt; <span id="input"></span><span class="blinker">_</span></span>';
         } else {
-          output.innerHTML += `> ERROR: Command not recognized. Type 'help'.<br>`;
+          let matched = smartReplies.find(r =>
+            r.triggers.some(t => cmd.includes(t))
+          );
+          if (matched) {
+            output.innerHTML += `<span style="color:#0ff;">${matched.reply}</span><br>`;
+          } else {
+            output.innerHTML += `> ERROR: Command not recognized. Type 'help'.<br>`;
+          }
           removeAllPrompts();
           output.innerHTML += '<span id="prompt">&gt; <span id="input"></span><span class="blinker">_</span></span>';
         }
